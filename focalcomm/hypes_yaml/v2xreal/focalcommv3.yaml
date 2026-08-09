@@ -1,0 +1,218 @@
+name: vr_fcm3_3stg_small_dataset_iou0.2_modified_him
+root_dir: "/path/to/dataset/V2XReal/train"
+validate_dir: "/path/to/dataset/V2XReal/val"
+test_dir: "/path/to/dataset/V2XReal/test"
+dataset_mode: 'vc'
+
+
+yaml_parser: 'load_anchor_free_params'
+train_params:
+  batch_size: &batch_size 8
+  epoches: &epoches 30
+  eval_freq: 1
+  save_freq: 1
+  max_cav: &max_cav 4
+
+
+fusion:
+  core_method: 'V2XRealIntermediateDataset'  
+  args: [ ]
+
+
+preprocess:
+  core_method: 'SpVoxelPreprocessor'
+  args:
+    voxel_size: &voxel_size [0.2, 0.2, 0.4]
+    max_points_per_voxel: 20
+    max_voxel_train: 72000
+    max_voxel_test: 144000
+  cav_lidar_range: &cav_lidar [-100, -100, -10, 100, 100, 6]
+  num_class: &num_class 3
+
+
+
+
+data_augment:
+  - NAME: random_world_flip
+    ALONG_AXIS_LIST: [ 'x', 'y' ]
+
+  - NAME: random_world_rotation
+    WORLD_ROT_ANGLE: [ -0.78539816, 0.78539816 ]
+
+  - NAME: random_world_scaling
+    WORLD_SCALE_RANGE: [ 0.9, 1.1]
+
+
+
+
+# postprocess:
+postprocess:
+  core_method: 'FocalCommPostprocessor'
+  cav_lidar_range: *cav_lidar
+  order: 'hwl'
+  max_num: 400
+  nms_thresh: 0.15
+  score_threshold: 0.1
+  voxel_size: *voxel_size
+  num_classes: *num_class
+  feature_map_stride: &feature_map_stride 8
+  post_center_range: &post_center_range [-100, -100, -10, 100, 100, 6]
+
+
+model:
+  core_method: focalcommv3
+  args:
+    batch_size: *batch_size
+    voxel_size: *voxel_size
+    lidar_range: *cav_lidar
+    # grid_size: *grid_size
+    max_cav: *max_cav
+    num_classes: *num_class
+    mean_vfe:
+      feature_points: 4
+
+
+    backbone_3d: []
+    height_compression:
+      feature_num: 256
+
+    him:
+      in_channels: 256  
+      hidden_dim: 256
+      num_classes: *num_class
+      num_stages: &num_stages 3
+      iou_threshold: 0.2  # IoU threshold for True Positive matching
+      masking_strategy: 'pooling'  # 'point', 'pooling', or 'box'
+      head_cfg_args:
+        class_agnostic: False
+        num_proposals: 150
+        input_channels: 256
+        hidden_channel: 128
+        dataset_name: 'v2xreal'
+        num_class: *num_class
+        feature_map_stride: *feature_map_stride
+        num_heads: 2
+        nms_kernel_size: 3
+        ffn_channel: 256
+        dropout: 0.1
+        bn_momentum: 0.1
+        activation: relu
+        num_hm_conv: 2
+        separate_head_cfg:
+          head_order: ['center', 'height', 'dim', 'rot']  
+          head_dict:
+            center:
+              out_channels: 2  
+              num_conv: 2
+            height:
+              out_channels: 1
+              num_conv: 2
+            dim:
+              out_channels: 3
+              num_conv: 2
+            rot:
+              out_channels: 2
+              num_conv: 2
+
+    qaff:
+      hidden_dim: 256
+      num_heads: 4
+      dropout: 0.1
+      num_stages: *num_stages
+  
+
+
+
+    dense_head:
+      class_agnostic: False
+      num_proposals: 300
+      input_channels: 256
+      hidden_channel: 128
+      dataset_name: 'v2xreal'
+      num_class: *num_class
+      feature_map_stride: *feature_map_stride
+      num_heads: 4
+      nms_kernel_size: 3
+      ffn_channel: 256
+      dropout: 0.1
+      bn_momentum: 0.1
+      activation: relu
+      num_hm_conv: 2
+      separate_head_cfg:
+        head_order: ['center', 'height', 'dim', 'rot']  
+        head_dict:
+          center:
+            out_channels: 2  
+            num_conv: 2
+          height:
+            out_channels: 1
+            num_conv: 2
+          dim:
+            out_channels: 3
+            num_conv: 2
+          rot:
+            out_channels: 2
+            num_conv: 2
+
+
+
+loss:
+  core_method: focalcommv3_loss
+  args:
+    # grid_size: *grid_size
+    point_cloud_range: *cav_lidar
+    voxel_size: *voxel_size
+    num_classes: *num_class
+    max_cav: *max_cav
+    feature_map_stride: *feature_map_stride
+    target_assigner_config:
+      feature_map_stride: *feature_map_stride
+      gaussian_overlap: 0.1
+      min_radius: 2
+      hungarian_assigner:
+        cls_cost:
+          gamma: 2.0
+          alpha: 0.25
+          weight: 0.15
+        reg_cost:
+          weight: 0.25
+        iou_cost:
+          weight: 0.25
+    loss_config:
+      loss_weights:
+        cls_weight: 1.0
+        bbox_weight: 2.0
+        hm_weight: 1.0
+        him_hm_weight: 0.5
+      code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      loss_cls:
+        use_sigmoid: True
+        gamma: 2.0
+        alpha: 0.25
+    post_processing:
+      score_thresh: 0.0
+      post_center_range: *post_center_range
+
+
+
+
+optimization:
+    batch_size_per_gpu: *batch_size
+    num_epochs: *epoches
+    optimizer: adam_onecycle
+    lr: 0.001
+    weight_decay: 0.01
+    momentum: 0.9
+    betas: [0.9, 0.999]
+    moms: [0.9, 0.8052631]
+    pct_start: 0.4
+    div_factor: 10
+    decay_step_list: [35, 45]
+    lr_decay: 0.1
+    lr_clip: 0.0000001
+    lr_warmup: False
+    warmup_epoch: 1
+    grad_norm_clip: 35
+
+
+

@@ -1,0 +1,194 @@
+name: dairv2x_attfuse
+data_dir: "/path/to/dataset/DAIR-V2X/cooperative-vehicle-infrastructure"
+root_dir: "/path/to/dataset/DAIR-V2X/cooperative-vehicle-infrastructure/train.json"
+validate_dir: "/path/to/dataset/DAIR-V2X/cooperative-vehicle-infrastructure/val.json"
+test_dir: "/path/to/dataset/DAIR-V2X/cooperative-vehicle-infrastructure/val.json"
+
+input_source: ['lidar']
+label_type: 'lidar'
+
+comm_range: 100
+
+
+yaml_parser: 'load_anchor_free_params'
+train_params:
+  batch_size: &batch_size 8
+  epoches: &epoches 50
+  eval_freq: 1
+  save_freq: 1
+  max_cav: &max_cav 2
+
+
+fusion:
+  core_method: 'DAIRV2XIntermediateFusionDataset'  
+  args: 
+    proj_first: true
+
+preprocess:
+  core_method: 'SpVoxelPreprocessor'
+  args:
+    voxel_size: &voxel_size [0.2, 0.2, 0.4]
+    max_points_per_voxel: 20
+    max_voxel_train: 72000
+    max_voxel_test: 144000
+  cav_lidar_range: &cav_lidar [-102.4, -102.4, -10, 102.4, 102.4, 6]
+  num_class: &num_class 1  # DAIR-V2X single-class vehicle detection
+
+
+data_augment:
+  - NAME: random_world_flip
+    ALONG_AXIS_LIST: ['x']
+
+  - NAME: random_world_rotation
+    WORLD_ROT_ANGLE: [ -0.78539816, 0.78539816 ]
+
+  - NAME: random_world_scaling
+    WORLD_SCALE_RANGE: [ 0.95, 1.05]
+
+
+postprocess:
+  core_method: 'FocalCommPostprocessor'
+  cav_lidar_range: *cav_lidar
+  order: 'hwl'
+  max_num: 400
+  nms_thresh: 0.15
+  score_threshold: 0.1
+  voxel_size: *voxel_size
+  num_classes: *num_class
+  feature_map_stride: &feature_map_stride 8
+  post_center_range: &post_center_range [-102.4, -102.4, -10, 102.4, 102.4, 6]
+
+
+# model related
+model:
+  core_method: att_fuse
+  args:
+    batch_size: *batch_size
+    voxel_size: *voxel_size
+    lidar_range: *cav_lidar
+    max_cav: *max_cav
+    num_classes: *num_class
+    mean_vfe:
+      feature_points: 4
+
+
+    backbone_3d: []
+    base_bev_backbone:
+      layer_nums: [5, 5]
+      layer_strides: [1, 2]
+      num_filters: [128, 256]
+      upsample_strides: [1, 2]
+      num_upsample_filter: [128, 128]
+      use_conv_for_no_stride: True
+
+    height_compression:
+      feature_num: 256
+
+    fusion_method: att_fuse
+    attfuse:
+      feat_dim: 256
+
+    shrink_header:
+      kernal_size: [ 3 ]
+      stride: [ 1 ]
+      padding: [ 1 ]
+      dim: [ 256 ]
+      input_dim: 256 
+
+
+
+
+
+    dense_head:
+      class_agnostic: False
+      num_proposals: 300
+      input_channels: 256
+      hidden_channel: 128
+      dataset_name: 'dairv2x'
+      num_class: *num_class
+      feature_map_stride: *feature_map_stride
+      num_heads: 4
+      nms_kernel_size: 3
+      ffn_channel: 256
+      dropout: 0.1
+      bn_momentum: 0.1
+      activation: relu
+      num_hm_conv: 2
+      separate_head_cfg:
+        head_order: ['center', 'height', 'dim', 'rot']  
+        head_dict:
+          center:
+            out_channels: 2  
+            num_conv: 2
+          height:
+            out_channels: 1
+            num_conv: 2
+          dim:
+            out_channels: 3
+            num_conv: 2
+          rot:
+            out_channels: 2
+            num_conv: 2
+
+
+
+loss:
+  core_method: focalcomm_loss
+  args:
+    point_cloud_range: *cav_lidar
+    voxel_size: *voxel_size
+    num_classes: *num_class
+    max_cav: *max_cav
+    feature_map_stride: *feature_map_stride
+    target_assigner_config:
+      feature_map_stride: *feature_map_stride
+      gaussian_overlap: 0.1
+      min_radius: 2
+      hungarian_assigner:
+        cls_cost:
+          gamma: 2.0
+          alpha: 0.25
+          weight: 0.15
+        reg_cost:
+          weight: 0.25
+        iou_cost:
+          weight: 0.25
+    loss_config:
+      loss_weights:
+        cls_weight: 1.0
+        bbox_weight: 2.0
+        hm_weight: 1.0
+        # him_hm_weight: 0.5
+      code_weights: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      loss_cls:
+        use_sigmoid: True
+        gamma: 2.0
+        alpha: 0.25
+    post_processing:
+      score_thresh: 0.1
+      post_center_range: *post_center_range
+
+
+
+
+
+optimization:
+    batch_size_per_gpu: *batch_size
+    num_epochs: *epoches
+    optimizer: adam_onecycle
+    lr: 0.002
+    weight_decay: 0.01
+    momentum: 0.9
+    betas: [0.9, 0.999]
+    moms: [0.9, 0.8052631]
+    pct_start: 0.4
+    div_factor: 10
+    decay_step_list: [35, 45]
+    lr_decay: 0.1
+    lr_clip: 0.0000001
+    lr_warmup: False
+    warmup_epoch: 1
+    grad_norm_clip: 35
+
+
+

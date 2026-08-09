@@ -1,0 +1,44 @@
+name: focalcomm
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - defaults
+dependencies:
+  - pip==21.1.2
+  - python==3.8
+  - pytorch==1.12.0
+  - torchvision==0.13.0
+  - torchaudio==0.12.0
+  - pytorch-cuda=11.8
+  - mkl=2021.4.0
+  - mkl-service
+  - mkl_fft
+  - mkl_random
+  - numpy=1.21.5
+  - git-lfs
+  - pip:
+    - cmake
+    - easydict~=1.9
+    - numba
+    - opencv-python-headless~=4.5.1.48
+    - scipy
+    - scikit-image
+    - tqdm
+    - PyYAML
+    - open3d
+    - cython
+    - tensorboardX
+    - shapely==2.0.0
+    - einops
+    - timm
+    - matplotlib
+    - icecream
+    - h5py
+    - pyquaternion
+    - efficientnet_pytorch==0.7.0
+    - scikit_learn
+    - python-lzf
+    - termcolor
+    - spconv-cu118
+    - git+https://github.com/klintan/pypcd.git

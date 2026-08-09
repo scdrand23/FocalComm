@@ -1,0 +1,256 @@
+data_augment:
+- ALONG_AXIS_LIST:
+  - x
+  - y
+  NAME: random_world_flip
+- NAME: random_world_rotation
+  WORLD_ROT_ANGLE:
+  - -0.78539816
+  - 0.78539816
+- NAME: random_world_scaling
+  WORLD_SCALE_RANGE:
+  - 0.9
+  - 1.1
+dataset_mode: vc
+fusion:
+  args: []
+  core_method: V2XRealIntermediateDataset
+loss:
+  args:
+    feature_map_stride: 8
+    grid_size: &id001 !!python/object/apply:numpy.core.multiarray._reconstruct
+      args:
+      - !!python/name:numpy.ndarray ''
+      - !!python/tuple
+        - 0
+      - !!binary |
+        Yg==
+      state: !!python/tuple
+      - 1
+      - !!python/tuple
+        - 3
+      - !!python/object/apply:numpy.dtype
+        args:
+        - i8
+        - false
+        - true
+        state: !!python/tuple
+        - 3
+        - <
+        - null
+        - null
+        - null
+        - -1
+        - -1
+        - 0
+      - false
+      - !!binary |
+        6AMAAAAAAADoAwAAAAAAACgAAAAAAAAA
+    loss_config:
+      code_weights:
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      - 1.0
+      loss_cls:
+        alpha: 0.25
+        gamma: 2.0
+        use_sigmoid: true
+      loss_weights:
+        bbox_weight: 2.0
+        cls_weight: 1.0
+        him_hm_weight: 0.1
+        hm_weight: 1.0
+    max_cav: 4
+    num_classes: 3
+    point_cloud_range: &id002
+    - -100
+    - -100
+    - -10
+    - 100
+    - 100
+    - 6
+    post_processing:
+      post_center_range: &id004
+      - -100
+      - -100
+      - -10
+      - 100
+      - 100
+      - 6
+      score_thresh: 0.0
+    target_assigner_config:
+      feature_map_stride: 8
+      gaussian_overlap: 0.1
+      hungarian_assigner:
+        cls_cost:
+          alpha: 0.25
+          gamma: 2.0
+          weight: 0.15
+        iou_cost:
+          weight: 0.25
+        reg_cost:
+          weight: 0.25
+      min_radius: 2
+    voxel_size: &id003
+    - 0.2
+    - 0.2
+    - 0.4
+  core_method: focalcommv3_loss
+model:
+  args:
+    backbone_3d: []
+    batch_size: 8
+    dense_head:
+      activation: relu
+      bn_momentum: 0.1
+      class_agnostic: false
+      dataset_name: v2xreal
+      dropout: 0.1
+      feature_map_stride: 8
+      ffn_channel: 256
+      grid_size: *id001
+      hidden_channel: 128
+      input_channels: 256
+      nms_kernel_size: 3
+      num_class: 3
+      num_heads: 4
+      num_hm_conv: 2
+      num_proposals: 300
+      separate_head_cfg:
+        head_dict:
+          center:
+            num_conv: 2
+            out_channels: 2
+          dim:
+            num_conv: 2
+            out_channels: 3
+          height:
+            num_conv: 2
+            out_channels: 1
+          rot:
+            num_conv: 2
+            out_channels: 2
+        head_order:
+        - center
+        - height
+        - dim
+        - rot
+    grid_size: *id001
+    height_compression:
+      feature_num: 256
+    him:
+      feature_map_stride: 8
+      head_cfg_args:
+        activation: relu
+        bn_momentum: 0.1
+        class_agnostic: false
+        dataset_name: v2xreal
+        dropout: 0.1
+        feature_map_stride: 8
+        ffn_channel: 256
+        grid_size: *id001
+        hidden_channel: 128
+        input_channels: 256
+        nms_kernel_size: 3
+        num_class: 3
+        num_heads: 2
+        num_hm_conv: 2
+        num_proposals: 150
+        separate_head_cfg:
+          head_dict:
+            center:
+              num_conv: 2
+              out_channels: 2
+            dim:
+              num_conv: 2
+              out_channels: 3
+            height:
+              num_conv: 2
+              out_channels: 1
+            rot:
+              num_conv: 2
+              out_channels: 2
+          head_order:
+          - center
+          - height
+          - dim
+          - rot
+      hidden_dim: 256
+      in_channels: 256
+      iou_threshold: 0.2
+      masking_strategy: pooling
+      num_classes: 3
+      num_stages: 3
+      point_cloud_range: *id002
+      voxel_size: *id003
+    lidar_range: *id002
+    max_cav: 4
+    mean_vfe:
+      feature_points: 4
+    num_classes: 3
+    qaff:
+      dropout: 0.1
+      hidden_dim: 256
+      num_heads: 4
+      num_stages: 3
+    voxel_size: *id003
+  core_method: focalcommv3
+name: vr_fcm3_3stg_full_dataset_iou0.2
+optimization:
+  batch_size_per_gpu: 8
+  betas:
+  - 0.9
+  - 0.999
+  decay_step_list:
+  - 35
+  - 45
+  div_factor: 10
+  grad_norm_clip: 35
+  lr: 0.001
+  lr_clip: 1.0e-07
+  lr_decay: 0.1
+  lr_warmup: false
+  momentum: 0.9
+  moms:
+  - 0.9
+  - 0.8052631
+  num_epochs: 50
+  optimizer: adam_onecycle
+  pct_start: 0.4
+  warmup_epoch: 1
+  weight_decay: 0.01
+postprocess:
+  cav_lidar_range: *id002
+  core_method: FocalCommPostprocessor
+  feature_map_stride: 8
+  max_num: 400
+  nms_thresh: 0.15
+  num_classes: 3
+  order: hwl
+  post_center_range: *id004
+  score_threshold: 0.1
+  voxel_size: *id003
+preprocess:
+  args:
+    max_points_per_voxel: 20
+    max_voxel_test: 144000
+    max_voxel_train: 72000
+    voxel_size: *id003
+  cav_lidar_range: *id002
+  core_method: SpVoxelPreprocessor
+  num_class: 3
+root_dir: /path/to/dataset/V2XReal/train
+test_dir: /path/to/dataset/V2XReal/test
+train_params:
+  batch_size: 8
+  epoches: 50
+  eval_freq: 1
+  max_cav: 4
+  save_freq: 1
+validate_dir: /path/to/dataset/V2XReal/test
+yaml_parser: load_anchor_free_params

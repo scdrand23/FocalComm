@@ -1,0 +1,108 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+documents/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyTorch
+*.pth
+*.pt
+*.ckpt
+*.pkl
+
+# Logs and outputs
+logs/
+train_logs/
+*.log
+*.err
+*.out
+slurm-*.out
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+focalcomm/logs/
+focalcomm/pcdet_utils/iou3d_nms/*.cpython-*.pyc
+focalcomm/visualization/simple_plot3d/*.cpython-*.pyc
+him/
+him05/
+*.txt
+!requirements.txt
+!README.md
+
+# Model checkpoints and data
+checkpoints/
+data/
+dataset/
+weights/
+pretrained/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Results and experiments
+results/
+experiments/
+outputs/
+save/
+saved_models/
+
+# CARLA specific
+PythonAPI/
+CarlaUE4/
+!checkpoints/
+!checkpoints/**
+checkpoints/**/*.pth
